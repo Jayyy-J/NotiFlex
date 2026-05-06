@@ -11,7 +11,7 @@ COPY tsconfig.json ./
 COPY src/ ./src/
 
 # Compilar TypeScript → dist/
-RUN npm run build
+RUN npx tsc --skipLibCheck
 
 # Eliminar devDependencies después de compilar
 RUN npm prune --production
