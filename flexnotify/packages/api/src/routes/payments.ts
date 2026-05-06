@@ -7,15 +7,13 @@ export const paymentsRouter = Router();
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2023-10-16' });
 
-// Plan pricing config
 const PLANS = {
-  monthly: { amount: 999, currency: 'usd', interval: 'month' as const },   // $9.99/mo
-  annual: { amount: 7999, currency: 'usd', interval: 'year' as const },     // $79.99/yr
+  monthly: { amount: 999, currency: 'usd', interval: 'month' as const },
+  annual:  { amount: 7999, currency: 'usd', interval: 'year' as const },
 };
 
-// ── STRIPE ──────────────────────────────────────────────────
-// POST /api/payments/stripe/create-session
-paymentsRouter.post('/stripe/create-session', requireAuth, async (req: AuthRequest, res: Response) => {
+// ── STRIPE
+paymentsRouter.post('/stripe/create-session', requireAuth as any, async (req: AuthRequest, res: Response) => {
   const { plan_type } = req.body;
   if (!['monthly', 'annual'].includes(plan_type)) {
     return res.status(400).json({ success: false, error: 'Invalid plan_type' });
@@ -48,8 +46,7 @@ paymentsRouter.post('/stripe/create-session', requireAuth, async (req: AuthReque
   }
 });
 
-// POST /api/payments/stripe/portal
-paymentsRouter.post('/stripe/portal', requireAuth, async (req: AuthRequest, res: Response) => {
+paymentsRouter.post('/stripe/portal', requireAuth as any, async (req: AuthRequest, res: Response) => {
   const { data: sub } = await supabase
     .from('subscriptions')
     .select('provider_subscription_id')
@@ -61,7 +58,6 @@ paymentsRouter.post('/stripe/portal', requireAuth, async (req: AuthRequest, res:
   }
 
   try {
-    // Get customer from subscription
     const subscription = await stripe.subscriptions.retrieve(sub.provider_subscription_id);
     const session = await stripe.billingPortal.sessions.create({
       customer: subscription.customer as string,
@@ -73,9 +69,8 @@ paymentsRouter.post('/stripe/portal', requireAuth, async (req: AuthRequest, res:
   }
 });
 
-// ── MERCADO PAGO ─────────────────────────────────────────────
-// POST /api/payments/mercadopago/create-preference
-paymentsRouter.post('/mercadopago/create-preference', requireAuth, async (req: AuthRequest, res: Response) => {
+// ── MERCADO PAGO
+paymentsRouter.post('/mercadopago/create-preference', requireAuth as any, async (req: AuthRequest, res: Response) => {
   const { plan_type } = req.body;
 
   try {
@@ -104,18 +99,17 @@ paymentsRouter.post('/mercadopago/create-preference', requireAuth, async (req: A
       }),
     });
 
-    const data = await response.json();
+    const data = await response.json() as any;
     return res.json({ success: true, data: { url: data.init_point, id: data.id } });
   } catch (err: any) {
     return res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// ── WOMPI (Colombia) ─────────────────────────────────────────
-// POST /api/payments/wompi/create-transaction
-paymentsRouter.post('/wompi/create-transaction', requireAuth, async (req: AuthRequest, res: Response) => {
+// ── WOMPI
+paymentsRouter.post('/wompi/create-transaction', requireAuth as any, async (req: AuthRequest, res: Response) => {
   const { plan_type } = req.body;
-  const amount = plan_type === 'monthly' ? 999 : 7999; // USD cents
+  const amount = plan_type === 'monthly' ? 999 : 7999;
 
   try {
     const response = await fetch('https://sandbox.wompi.co/v1/transactions', {
@@ -134,34 +128,33 @@ paymentsRouter.post('/wompi/create-transaction', requireAuth, async (req: AuthRe
       }),
     });
 
-    const data = await response.json();
+    const data = await response.json() as any;
     return res.json({ success: true, data });
   } catch (err: any) {
     return res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// ── PSE (Colombia bank transfer) ──────────────────────────────
-// GET /api/payments/pse/banks
+// ── PSE Banks
 paymentsRouter.get('/pse/banks', async (_req: Request, res: Response) => {
   try {
     const response = await fetch(
-      `https://sandbox.wompi.co/v1/pse/financial_institutions`,
+      'https://sandbox.wompi.co/v1/pse/financial_institutions',
       { headers: { 'Authorization': `Bearer ${process.env.WOMPI_PUBLIC_KEY}` } }
     );
-    const data = await response.json();
+    const data = await response.json() as any;
     return res.json({ success: true, data: data.data });
   } catch (err: any) {
     return res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// POST /api/payments/pse/create-transaction
-paymentsRouter.post('/pse/create-transaction', requireAuth, async (req: AuthRequest, res: Response) => {
+// ── PSE Transaction
+paymentsRouter.post('/pse/create-transaction', requireAuth as any, async (req: AuthRequest, res: Response) => {
   const { plan_type, financial_institution_code, user_type, user_legal_id, user_legal_id_type } = req.body;
 
   try {
-    const amount = plan_type === 'monthly' ? 9990000 : 79990000; // COP cents
+    const amount = plan_type === 'monthly' ? 9990000 : 79990000;
 
     const response = await fetch('https://sandbox.wompi.co/v1/transactions', {
       method: 'POST',
@@ -186,21 +179,19 @@ paymentsRouter.post('/pse/create-transaction', requireAuth, async (req: AuthRequ
       }),
     });
 
-    const data = await response.json();
+    const data = await response.json() as any;
     return res.json({ success: true, data });
   } catch (err: any) {
     return res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// ── PAYPAL ───────────────────────────────────────────────────
-// POST /api/payments/paypal/create-order
-paymentsRouter.post('/paypal/create-order', requireAuth, async (req: AuthRequest, res: Response) => {
+// ── PAYPAL
+paymentsRouter.post('/paypal/create-order', requireAuth as any, async (req: AuthRequest, res: Response) => {
   const { plan_type } = req.body;
   const amount = plan_type === 'monthly' ? '9.99' : '79.99';
 
   try {
-    // Get PayPal access token
     const authRes = await fetch('https://api-m.sandbox.paypal.com/v1/oauth2/token', {
       method: 'POST',
       headers: {
@@ -209,7 +200,7 @@ paymentsRouter.post('/paypal/create-order', requireAuth, async (req: AuthRequest
       },
       body: 'grant_type=client_credentials',
     });
-    const { access_token } = await authRes.json();
+    const { access_token } = await authRes.json() as any;
 
     const orderRes = await fetch('https://api-m.sandbox.paypal.com/v2/checkout/orders', {
       method: 'POST',
@@ -230,8 +221,8 @@ paymentsRouter.post('/paypal/create-order', requireAuth, async (req: AuthRequest
       }),
     });
 
-    const order = await orderRes.json();
-    const approveLink = order.links.find((l: any) => l.rel === 'approve');
+    const order = await orderRes.json() as any;
+    const approveLink = order.links?.find((l: any) => l.rel === 'approve');
     return res.json({ success: true, data: { order_id: order.id, url: approveLink?.href } });
   } catch (err: any) {
     return res.status(500).json({ success: false, error: err.message });
