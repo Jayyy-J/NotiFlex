@@ -9,7 +9,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2023-10
 
 // ── STRIPE WEBHOOK
 webhookRouter.post('/stripe', async (req: Request, res: Response) => {
-  const sig = req.headers['stripe-signature']!;
+  const sig = req.headers['stripe-signature'] as string;
   let event: Stripe.Event;
 
   try {
@@ -22,7 +22,7 @@ webhookRouter.post('/stripe', async (req: Request, res: Response) => {
   try {
     switch (event.type) {
       case 'checkout.session.completed': {
-        const session = event.data.object as Stripe.CheckoutSession;
+        const session = event.data.object as Stripe.Checkout.Session;
         const userId = session.metadata?.user_id;
         const planType = session.metadata?.plan_type;
         if (!userId) break;
@@ -40,9 +40,10 @@ webhookRouter.post('/stripe', async (req: Request, res: Response) => {
           currency: session.currency?.toUpperCase() ?? 'USD',
         }).eq('user_id', userId);
 
+        const subResult = await supabase.from('subscriptions').select('id').eq('user_id', userId).single();
         await supabase.from('invoices').insert({
           user_id: userId,
-          subscription_id: (await supabase.from('subscriptions').select('id').eq('user_id', userId).single()).data?.id,
+          subscription_id: subResult.data?.id,
           amount: (session.amount_total ?? 0) / 100,
           currency: session.currency?.toUpperCase() ?? 'USD',
           status: 'paid',
@@ -74,7 +75,7 @@ webhookRouter.post('/stripe', async (req: Request, res: Response) => {
 
     return res.json({ received: true });
   } catch (err: any) {
-    logger.error('Stripe webhook processing error', { error: err.message, event: event.type });
+    logger.error('Stripe webhook error', { error: err.message });
     return res.status(500).json({ error: 'Webhook processing failed' });
   }
 });
@@ -88,7 +89,7 @@ webhookRouter.post('/mercadopago', async (req: Request, res: Response) => {
     const response = await fetch(`https://api.mercadopago.com/v1/payments/${data.id}`, {
       headers: { 'Authorization': `Bearer ${process.env.MERCADOPAGO_ACCESS_TOKEN}` },
     });
-    const payment = await response.json();
+    const payment = await response.json() as any;
 
     if (payment.status === 'approved') {
       const [userId, planType] = (payment.external_reference || '').split('_');
@@ -97,7 +98,7 @@ webhookRouter.post('/mercadopago', async (req: Request, res: Response) => {
           status: 'active',
           plan_type: planType,
           payment_provider: 'mercadopago',
-          provider_subscription_id: data.id.toString(),
+          provider_subscription_id: String(data.id),
           amount: payment.transaction_amount,
           currency: payment.currency_id,
           current_period_start: new Date().toISOString(),
@@ -120,12 +121,11 @@ webhookRouter.post('/wompi', async (req: Request, res: Response) => {
   const { data } = req.body;
   if (!data?.transaction) return res.sendStatus(200);
 
-  const tx = data.transaction;
+  const tx = data.transaction as any;
   if (tx.status === 'APPROVED') {
-    const reference = tx.reference || '';
+    const reference: string = tx.reference || '';
     const parts = reference.split('_');
     const userId = parts[1];
-    const planType = parts[0] === 'PSE' ? parts[2] : parts[1];
 
     if (userId) {
       await supabase.from('subscriptions').update({
@@ -148,7 +148,7 @@ webhookRouter.post('/paypal', async (req: Request, res: Response) => {
   const { event_type, resource } = req.body;
 
   if (event_type === 'PAYMENT.CAPTURE.COMPLETED') {
-    const customId = resource?.custom_id || '';
+    const customId: string = resource?.custom_id || '';
     const [userId, planType] = customId.split('_');
 
     if (userId) {
