@@ -1,0 +1,58 @@
+{
+  "name": "FlexNotify — New Delivery Alert",
+  "nodes": [
+    {
+      "id": "trigger",
+      "name": "Supabase: New Delivery",
+      "type": "n8n-nodes-base.webhook",
+      "position": [0, 0],
+      "parameters": {
+        "path": "new-delivery",
+        "method": "POST",
+        "responseMode": "onReceived"
+      }
+    },
+    {
+      "id": "validate",
+      "name": "Validate Delivery",
+      "type": "n8n-nodes-base.if",
+      "position": [200, 0],
+      "parameters": {
+        "conditions": {
+          "string": [{
+            "value1": "={{$json[\"status\"]}}",
+            "operation": "equal",
+            "value2": "available"
+          }]
+        }
+      }
+    },
+    {
+      "id": "send_notifications",
+      "name": "Send Matching Notifications",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [400, 0],
+      "parameters": {
+        "url": "={{$env.API_URL}}/api/notifications/send-matching",
+        "method": "POST",
+        "headers": {
+          "x-api-key": "={{$env.N8N_API_KEY}}"
+        },
+        "bodyParametersJson": "={\"delivery_id\": \"{{$json.id}}\"}",
+        "responseFormat": "json"
+      }
+    },
+    {
+      "id": "log_result",
+      "name": "Log Result",
+      "type": "n8n-nodes-base.noOp",
+      "position": [600, 0],
+      "parameters": {}
+    }
+  ],
+  "connections": {
+    "trigger": { "main": [[ { "node": "validate", "type": "main", "index": 0 } ]] },
+    "validate": { "main": [[ { "node": "send_notifications", "type": "main", "index": 0 } ], []] },
+    "send_notifications": { "main": [[ { "node": "log_result", "type": "main", "index": 0 } ]] }
+  }
+}
