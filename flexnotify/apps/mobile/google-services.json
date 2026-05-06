@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "477030127459",
+    "project_id": "flexnotify-45229",
+    "storage_bucket": "flexnotify-45229.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:477030127459:android:2124c94b58d8d62d2d6556",
+        "android_client_info": {
+          "package_name": "app.flexnotify.mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAiFouAYwRYJToTsOZ0iczR5CQADKh-PuY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
