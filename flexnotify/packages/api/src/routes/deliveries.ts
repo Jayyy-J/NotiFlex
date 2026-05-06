@@ -1,14 +1,14 @@
-import { Router, Response } from 'express';
+import { Router, Response, Request } from 'express';
 import { requireAuth, requireActiveSubscription, AuthRequest } from '../middleware/auth';
 import { supabase } from '../lib/supabase';
 import { z } from 'zod';
 
 export const deliveriesRouter = Router();
 
-deliveriesRouter.use(requireAuth);
-deliveriesRouter.use(requireActiveSubscription);
+deliveriesRouter.use(requireAuth as any);
+deliveriesRouter.use(requireActiveSubscription as any);
 
-// GET /api/deliveries — filtered by user preferences
+// GET /api/deliveries
 deliveriesRouter.get('/', async (req: AuthRequest, res: Response) => {
   try {
     const { data: prefs } = await supabase
@@ -83,11 +83,11 @@ deliveriesRouter.post('/:id/mark-read', async (req: AuthRequest, res: Response) 
   return res.json({ success: true });
 });
 
-// Internal: POST /api/deliveries/ingest (called by scraper via API key)
+// POST /api/deliveries/ingest (scraper)
 deliveriesRouter.post('/ingest', async (req: Request, res: Response) => {
-  const apiKey = (req as any).headers['x-api-key'];
+  const apiKey = req.headers['x-api-key'];
   if (apiKey !== process.env.SCRAPER_API_KEY) {
-    return (res as Response).status(403).json({ success: false, error: 'Forbidden' });
+    return res.status(403).json({ success: false, error: 'Forbidden' });
   }
 
   const DeliverySchema = z.object({
@@ -118,24 +118,23 @@ deliveriesRouter.post('/ingest', async (req: Request, res: Response) => {
       .single();
 
     if (error) throw error;
-
-    return (res as Response).status(201).json({ success: true, data });
+    return res.status(201).json({ success: true, data });
   } catch (err) {
-    if (err instanceof z.ZodError) return (res as Response).status(400).json({ success: false, error: err.errors });
-    return (res as Response).status(500).json({ success: false, error: 'Ingest failed' });
+    if (err instanceof z.ZodError) return res.status(400).json({ success: false, error: err.errors });
+    return res.status(500).json({ success: false, error: 'Ingest failed' });
   }
 });
 
-// Internal: PATCH /api/deliveries/:id/status
+// PATCH /api/deliveries/:id/status
 deliveriesRouter.patch('/:id/status', async (req: Request, res: Response) => {
-  const apiKey = (req as any).headers['x-api-key'];
+  const apiKey = req.headers['x-api-key'];
   if (apiKey !== process.env.SCRAPER_API_KEY) {
-    return (res as Response).status(403).json({ success: false, error: 'Forbidden' });
+    return res.status(403).json({ success: false, error: 'Forbidden' });
   }
 
   const { status } = req.body;
   if (!['available', 'taken', 'expired'].includes(status)) {
-    return (res as Response).status(400).json({ success: false, error: 'Invalid status' });
+    return res.status(400).json({ success: false, error: 'Invalid status' });
   }
 
   const { error } = await supabase
@@ -143,6 +142,6 @@ deliveriesRouter.patch('/:id/status', async (req: Request, res: Response) => {
     .update({ status })
     .eq('id', req.params.id);
 
-  if (error) return (res as Response).status(500).json({ success: false, error: error.message });
-  return (res as Response).json({ success: true });
+  if (error) return res.status(500).json({ success: false, error: error.message });
+  return res.json({ success: true });
 });
