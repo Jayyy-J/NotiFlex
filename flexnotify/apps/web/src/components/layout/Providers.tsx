@@ -6,9 +6,7 @@ import { useEffect, useState } from 'react';
 import { useAuthStore } from '../../lib/hooks/useAuth';
 
 const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: { staleTime: 30_000, retry: 1 },
-  },
+  defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
 });
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -17,10 +15,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     setMounted(true);
-    initAuth();
+    // Catch initAuth errors silently — don't block the page
+    initAuth().catch(err => console.warn('initAuth failed:', err));
   }, [initAuth]);
 
-  if (!mounted) return null;
+  if (!mounted) return <>{children}</>;
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -30,8 +29,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
         toastOptions={{
           duration: 4000,
           style: { borderRadius: '12px', fontSize: '14px', fontWeight: '500' },
-          success: { iconTheme: { primary: '#10b981', secondary: '#fff' } },
-          error: { iconTheme: { primary: '#ef4444', secondary: '#fff' } },
         }}
       />
     </QueryClientProvider>
