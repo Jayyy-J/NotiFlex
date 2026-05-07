@@ -6,7 +6,7 @@ import { Features, HowItWorks, Testimonials, FAQ, Footer } from '../components/l
 
 export const metadata: Metadata = {
   title: 'FlexNotify — Amazon Flex & DoorDash Block Alerts',
-  description: 'Stop missing Amazon Flex blocks and DoorDash orders. Get instant push notifications filtered by price, zone, and schedule.',
+  description: 'Stop missing Amazon Flex blocks and DoorDash orders.',
 };
 
 export default function LandingPage() {
