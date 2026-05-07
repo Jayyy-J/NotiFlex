@@ -34,9 +34,9 @@ export default function LoginPage() {
 
       const role = profile?.role;
       if (role === 'admin_owner' || role === 'admin_super') {
-        router.push('/admin/owner');
+        window.location.href = '/admin/owner';
       } else {
-        router.push('/dashboard');
+        window.location.href = '/dashboard';
       }
     } catch (err: any) {
       toast.error(err.message || 'Login failed');
