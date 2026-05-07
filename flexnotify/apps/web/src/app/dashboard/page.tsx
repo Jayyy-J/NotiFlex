@@ -48,8 +48,8 @@ export default function DashboardPage() {
   useEffect(() => {
     const ch = supabase.channel('deliveries-rt')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'deliveries' }, (payload) => {
-        setNewIds(prev => new Set([...prev, payload.new.id]));
-        setTimeout(() => setNewIds(prev => { const n = new Set(prev); n.delete(payload.new.id); return n; }), 4000);
+        setNewIds(prev => { const n = new Set(Array.from(prev)); n.add(payload.new.id); return n; });
+        setTimeout(() => setNewIds(prev => { const n = new Set(Array.from(prev)); n.delete(payload.new.id); return n; }), 4000);
       }).subscribe();
     return () => { supabase.removeChannel(ch); };
   }, []);
