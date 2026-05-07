@@ -77,7 +77,6 @@ export default function AdminDashboardPage() {
         )}
       </div>
 
-      {/* Stats grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {statCards.map(({ label, value, icon: Icon, color, bg }) => (
           <div key={label} className="card">
@@ -93,7 +92,6 @@ export default function AdminDashboardPage() {
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">
-        {/* Recent users */}
         <div className="card">
           <h2 className="font-semibold mb-4">Recent Users</h2>
           <div className="space-y-3">
@@ -117,7 +115,6 @@ export default function AdminDashboardPage() {
           </div>
         </div>
 
-        {/* Recent invoices */}
         <div className="card">
           <h2 className="font-semibold mb-4">Recent Invoices</h2>
           <div className="space-y-3">
@@ -140,3 +137,4 @@ export default function AdminDashboardPage() {
       </div>
     </div>
   );
+}
