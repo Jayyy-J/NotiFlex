@@ -1,53 +1,53 @@
 import { create } from 'zustand';
 import { supabase } from '../supabase/client';
 
-interface User {
-  id: string;
-  email: string;
-  full_name: string;
-  phone?: string;
-  role: 'user' | 'admin_owner' | 'admin_super';
-  avatar_url?: string;
-  created_at: string;
-  updated_at: string;
-  user_preferences?: any;
-  subscriptions?: any;
-}
-
 interface AuthState {
-  user: User | null;
+  user: any;
   accessToken: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  setUser: (user: User | null) => void;
-  setToken: (token: string | null) => void;
   initAuth: () => Promise<void>;
   logout: () => Promise<void>;
 }
 
-// NO persist — always fresh from DB on load
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   accessToken: null,
   isLoading: true,
   isAuthenticated: false,
 
-  setUser: (user) => set({ user, isAuthenticated: !!user }),
-  setToken: (accessToken) => set({ accessToken }),
-
   initAuth: async () => {
     set({ isLoading: true });
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
-        // Always fetch fresh profile with role from DB
+        // Simple query — no joins that can fail
         const { data: profile } = await supabase
           .from('users')
-          .select('*, user_preferences(*), subscriptions(*)')
+          .select('id, email, full_name, role, phone, avatar_url')
           .eq('id', session.user.id)
           .single();
+
         if (profile) {
-          set({ user: profile, accessToken: session.access_token, isAuthenticated: true });
+          // Get subscription separately
+          const { data: sub } = await supabase
+            .from('subscriptions')
+            .select('*')
+            .eq('user_id', session.user.id)
+            .single();
+
+          // Get preferences separately
+          const { data: prefs } = await supabase
+            .from('user_preferences')
+            .select('*')
+            .eq('user_id', session.user.id)
+            .single();
+
+          set({
+            user: { ...profile, subscriptions: sub, user_preferences: prefs },
+            accessToken: session.access_token,
+            isAuthenticated: true,
+          });
         }
       }
     } catch (e) {
@@ -55,18 +55,29 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
     set({ isLoading: false });
 
-    supabase.auth.onAuthStateChange(async (_event, session) => {
+    supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
         const { data: profile } = await supabase
           .from('users')
-          .select('*, user_preferences(*), subscriptions(*)')
+          .select('id, email, full_name, role, phone, avatar_url')
           .eq('id', session.user.id)
           .single();
+
         if (profile) {
-          set({ user: profile, accessToken: session.access_token, isAuthenticated: true });
+          const { data: sub } = await supabase
+            .from('subscriptions').select('*').eq('user_id', session.user.id).single();
+          const { data: prefs } = await supabase
+            .from('user_preferences').select('*').eq('user_id', session.user.id).single();
+
+          set({
+            user: { ...profile, subscriptions: sub, user_preferences: prefs },
+            accessToken: session.access_token,
+            isAuthenticated: true,
+            isLoading: false,
+          });
         }
       } else {
-        set({ user: null, accessToken: null, isAuthenticated: false });
+        set({ user: null, accessToken: null, isAuthenticated: false, isLoading: false });
       }
     });
   },
