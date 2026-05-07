@@ -1,34 +1,57 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { Bell, LayoutDashboard, Settings, CreditCard, LogOut, ShieldCheck, Users, BarChart3, Menu } from 'lucide-react';
+import { Bell, LayoutDashboard, Settings, CreditCard, LogOut, ShieldCheck, BarChart3, Menu } from 'lucide-react';
 import { clsx } from 'clsx';
-import { useAuthStore } from '../../lib/hooks/useAuth';
+import { supabase } from '../../lib/supabase/client';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading, logout, user } = useAuthStore();
-  const router = useRouter();
   const pathname = usePathname();
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) router.push('/auth/login');
-  }, [isAuthenticated, isLoading, router]);
+    const loadUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        window.location.href = '/auth/login';
+        return;
+      }
+      const { data: profile } = await supabase
+        .from('users')
+        .select('id, email, full_name, role')
+        .eq('id', session.user.id)
+        .single();
+      const { data: sub } = await supabase
+        .from('subscriptions').select('*').eq('user_id', session.user.id).single();
+      setUser({ ...profile, subscriptions: sub, accessToken: session.access_token });
+      setLoading(false);
+    };
+    loadUser();
+  }, []);
 
-  if (isLoading) return (
+  const logout = async () => {
+    await supabase.auth.signOut();
+    window.location.href = '/';
+  };
+
+  if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50">
       <div className="w-10 h-10 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
     </div>
   );
 
-  if (!isAuthenticated) return null;
-
-  const role = (user as any)?.role;
+  const role = user?.role;
   const isAdmin = role === 'admin_owner' || role === 'admin_super';
   const isSuper = role === 'admin_super';
-  const sub = (user as any)?.subscriptions;
+  const sub = user?.subscriptions;
+  const statusColor: Record<string, string> = {
+    active: 'bg-green-500', trial: 'bg-yellow-500',
+    expired: 'bg-red-500', cancelled: 'bg-slate-400',
+  };
 
   const userNav = [
     { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -36,15 +59,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { href: '/dashboard/settings', icon: Settings, label: 'Settings' },
     { href: '/dashboard/billing', icon: CreditCard, label: 'Billing' },
   ];
-
-  const adminNav = [
-    { href: '/admin/owner', icon: BarChart3, label: isSuper ? 'Analytics & Users' : 'Admin Dashboard' },
-  ];
-
-  const statusColor: Record<string, string> = {
-    active: 'bg-green-500', trial: 'bg-yellow-500',
-    expired: 'bg-red-500', cancelled: 'bg-slate-400',
-  };
 
   const Sidebar = () => (
     <div className="flex flex-col h-full">
@@ -60,7 +74,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {isAdmin && (
         <div className="mx-3 mt-3 rounded-xl bg-blue-50 border border-blue-100 px-3 py-2 flex items-center gap-2">
           <ShieldCheck className="w-4 h-4 text-blue-600 flex-shrink-0" />
-          <span className="text-xs font-semibold text-blue-700">{isSuper ? '🔐 Super Admin' : '👑 Admin Owner'}</span>
+          <span className="text-xs font-bold text-blue-700">{isSuper ? '🔐 Super Admin' : '👑 Admin Owner'}</span>
         </div>
       )}
 
@@ -78,13 +92,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <div className="px-3 pt-5 pb-1">
               <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Admin</p>
             </div>
-            {adminNav.map(({ href, icon: Icon, label }) => (
-              <Link key={label} href={href} onClick={() => setMobileOpen(false)}
-                className={clsx('flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all',
-                  pathname.startsWith('/admin') ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900')}>
-                <Icon className="w-4 h-4" />{label}
-              </Link>
-            ))}
+            <Link href="/admin/owner" onClick={() => setMobileOpen(false)}
+              className={clsx('flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all',
+                pathname.startsWith('/admin') ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900')}>
+              <BarChart3 className="w-4 h-4" />Admin Dashboard
+            </Link>
           </>
         )}
       </nav>
@@ -104,11 +116,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <div className="p-3 border-t border-slate-100">
         <div className="flex items-center gap-3 px-2 py-2 mb-1">
           <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-sm flex-shrink-0">
-            {(user as any)?.full_name?.[0]?.toUpperCase() ?? '?'}
+            {user?.full_name?.[0]?.toUpperCase() ?? '?'}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-slate-900 truncate">{(user as any)?.full_name}</p>
-            <p className="text-xs text-slate-500 truncate">{(user as any)?.email}</p>
+            <p className="text-sm font-semibold text-slate-900 truncate">{user?.full_name}</p>
+            <p className="text-xs text-slate-500 truncate">{user?.email}</p>
           </div>
         </div>
         <button onClick={logout}
@@ -124,25 +136,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <aside className="hidden lg:flex w-64 border-r border-slate-200 flex-col sticky top-0 h-screen bg-white">
         <Sidebar />
       </aside>
-
       {mobileOpen && (
         <div className="lg:hidden fixed inset-0 z-50 flex">
           <div className="absolute inset-0 bg-black/40" onClick={() => setMobileOpen(false)} />
           <aside className="relative w-64 flex flex-col bg-white h-full shadow-xl"><Sidebar /></aside>
         </div>
       )}
-
       <div className="flex-1 flex flex-col min-w-0">
         <div className="lg:hidden flex items-center gap-3 px-4 py-3 bg-white border-b border-slate-200">
           <button onClick={() => setMobileOpen(true)} className="p-2 rounded-lg hover:bg-slate-100">
             <Menu className="w-5 h-5" />
           </button>
-          <div className="flex items-center gap-2 font-bold text-slate-900">
-            <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center">
-              <Bell className="w-3.5 h-3.5 text-white" />
-            </div>
-            FlexNotify
-          </div>
+          <span className="font-bold text-slate-900">FlexNotify</span>
         </div>
         <main className="flex-1 overflow-auto">{children}</main>
       </div>
