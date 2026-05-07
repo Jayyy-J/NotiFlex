@@ -1,7 +1,19 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { supabase } from '../supabase/client';
-import type { User } from '../../../../packages/shared/src/types';
+
+interface User {
+  id: string;
+  email: string;
+  full_name: string;
+  phone?: string;
+  role: 'user' | 'admin_owner' | 'admin_super';
+  avatar_url?: string;
+  created_at: string;
+  updated_at: string;
+  user_preferences?: any;
+  subscriptions?: any;
+}
 
 interface AuthState {
   user: User | null;
@@ -16,7 +28,7 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       user: null,
       accessToken: null,
       isLoading: true,
@@ -27,14 +39,18 @@ export const useAuthStore = create<AuthState>()(
 
       initAuth: async () => {
         set({ isLoading: true });
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-          const { data: profile } = await supabase
-            .from('users')
-            .select('*, user_preferences(*), subscriptions(*)')
-            .eq('id', session.user.id)
-            .single();
-          set({ user: profile, accessToken: session.access_token, isAuthenticated: true });
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user) {
+            const { data: profile } = await supabase
+              .from('users')
+              .select('*, user_preferences(*), subscriptions(*)')
+              .eq('id', session.user.id)
+              .single();
+            set({ user: profile, accessToken: session.access_token, isAuthenticated: true });
+          }
+        } catch (e) {
+          console.error('initAuth error', e);
         }
         set({ isLoading: false });
 
