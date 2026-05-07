@@ -6,13 +6,6 @@ import { useAuthStore } from '../../../lib/hooks/useAuth';
 import { Users, DollarSign, TrendingUp, Bell, Download, BarChart3 } from 'lucide-react';
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Line } from 'react-chartjs-2';
-import {
-  Chart as ChartJS, CategoryScale, LinearScale, PointElement,
-  LineElement, Title, Tooltip, Legend, Filler
-} from 'chart.js';
-
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler);
 
 export default function AdminDashboardPage() {
   const { user, accessToken } = useAuthStore();
@@ -57,14 +50,14 @@ export default function AdminDashboardPage() {
   };
 
   const statCards = [
-    { label: 'Total Users', value: metrics?.total_users ?? '-', icon: Users, color: 'text-blue-600', bg: 'bg-blue-50' },
-    { label: 'Active Subscribers', value: metrics?.active_users ?? '-', icon: TrendingUp, color: 'text-green-600', bg: 'bg-green-50' },
-    { label: 'Trial Users', value: metrics?.trial_users ?? '-', icon: Bell, color: 'text-yellow-600', bg: 'bg-yellow-50' },
-    { label: 'Monthly Revenue', value: metrics ? `$${metrics.monthly_revenue.toFixed(2)}` : '-', icon: DollarSign, color: 'text-purple-600', bg: 'bg-purple-50' },
-    { label: 'Annual Revenue', value: metrics ? `$${metrics.annual_revenue.toFixed(2)}` : '-', icon: DollarSign, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-    { label: 'Est. Next Month', value: metrics ? `$${metrics.estimated_next_month.toFixed(2)}` : '-', icon: BarChart3, color: 'text-pink-600', bg: 'bg-pink-50' },
-    { label: 'Conversion Rate', value: metrics ? `${metrics.conversion_rate}%` : '-', icon: TrendingUp, color: 'text-teal-600', bg: 'bg-teal-50' },
-    { label: 'Notifs Today', value: metrics?.notifications_sent_today ?? '-', icon: Bell, color: 'text-orange-600', bg: 'bg-orange-50' },
+    { label: 'Total Users', value: metrics?.total_users ?? '—', icon: Users, color: 'text-blue-600', bg: 'bg-blue-50' },
+    { label: 'Active Subscribers', value: metrics?.active_users ?? '—', icon: TrendingUp, color: 'text-green-600', bg: 'bg-green-50' },
+    { label: 'Trial Users', value: metrics?.trial_users ?? '—', icon: Bell, color: 'text-yellow-600', bg: 'bg-yellow-50' },
+    { label: 'Monthly Revenue', value: metrics ? `$${Number(metrics.monthly_revenue).toFixed(2)}` : '—', icon: DollarSign, color: 'text-purple-600', bg: 'bg-purple-50' },
+    { label: 'Annual Revenue', value: metrics ? `$${Number(metrics.annual_revenue).toFixed(2)}` : '—', icon: DollarSign, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+    { label: 'Est. Next Month', value: metrics ? `$${Number(metrics.estimated_next_month).toFixed(2)}` : '—', icon: BarChart3, color: 'text-pink-600', bg: 'bg-pink-50' },
+    { label: 'Conversion Rate', value: metrics ? `${metrics.conversion_rate}%` : '—', icon: TrendingUp, color: 'text-teal-600', bg: 'bg-teal-50' },
+    { label: 'Notifs Today', value: metrics?.notifications_sent_today ?? '—', icon: Bell, color: 'text-orange-600', bg: 'bg-orange-50' },
   ];
 
   return (
@@ -76,21 +69,12 @@ export default function AdminDashboardPage() {
             {isSuper ? 'Super Admin' : 'Owner'} view
           </p>
         </div>
-        <div className="flex gap-3">
-          {isSuper && (
-            <button onClick={handleExport} className="btn-primary gap-2">
-              <Download className="w-4 h-4" />
-              Export Database
-            </button>
-          )}
-          <button
-            onClick={() => window.open('/api/admin/invoices', '_blank')}
-            className="btn-secondary gap-2"
-          >
+        {isSuper && (
+          <button onClick={handleExport} className="btn-primary gap-2">
             <Download className="w-4 h-4" />
-            Download PDF Report
+            Export Database
           </button>
-        </div>
+        )}
       </div>
 
       {/* Stats grid */}
