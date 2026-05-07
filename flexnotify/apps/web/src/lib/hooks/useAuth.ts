@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 import { supabase } from '../supabase/client';
 
 interface User {
@@ -26,57 +25,55 @@ interface AuthState {
   logout: () => Promise<void>;
 }
 
-export const useAuthStore = create<AuthState>()(
-  persist(
-    (set) => ({
-      user: null,
-      accessToken: null,
-      isLoading: true,
-      isAuthenticated: false,
+// NO persist — always fresh from DB on load
+export const useAuthStore = create<AuthState>((set) => ({
+  user: null,
+  accessToken: null,
+  isLoading: true,
+  isAuthenticated: false,
 
-      setUser: (user) => set({ user, isAuthenticated: !!user }),
-      setToken: (accessToken) => set({ accessToken }),
+  setUser: (user) => set({ user, isAuthenticated: !!user }),
+  setToken: (accessToken) => set({ accessToken }),
 
-      initAuth: async () => {
-        set({ isLoading: true });
-        try {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session?.user) {
-            const { data: profile } = await supabase
-              .from('users')
-              .select('*, user_preferences(*), subscriptions(*)')
-              .eq('id', session.user.id)
-              .single();
-            set({ user: profile, accessToken: session.access_token, isAuthenticated: true });
-          }
-        } catch (e) {
-          console.error('initAuth error', e);
+  initAuth: async () => {
+    set({ isLoading: true });
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        // Always fetch fresh profile with role from DB
+        const { data: profile } = await supabase
+          .from('users')
+          .select('*, user_preferences(*), subscriptions(*)')
+          .eq('id', session.user.id)
+          .single();
+        if (profile) {
+          set({ user: profile, accessToken: session.access_token, isAuthenticated: true });
         }
-        set({ isLoading: false });
-
-        supabase.auth.onAuthStateChange(async (_event, session) => {
-          if (session?.user) {
-            const { data: profile } = await supabase
-              .from('users')
-              .select('*, user_preferences(*), subscriptions(*)')
-              .eq('id', session.user.id)
-              .single();
-            set({ user: profile, accessToken: session.access_token, isAuthenticated: true });
-          } else {
-            set({ user: null, accessToken: null, isAuthenticated: false });
-          }
-        });
-      },
-
-      logout: async () => {
-        await supabase.auth.signOut();
-        set({ user: null, accessToken: null, isAuthenticated: false });
-        window.location.href = '/';
-      },
-    }),
-    {
-      name: 'flexnotify-auth',
-      partialize: (state) => ({ user: state.user, accessToken: state.accessToken }),
+      }
+    } catch (e) {
+      console.error('initAuth error', e);
     }
-  )
-);
+    set({ isLoading: false });
+
+    supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session?.user) {
+        const { data: profile } = await supabase
+          .from('users')
+          .select('*, user_preferences(*), subscriptions(*)')
+          .eq('id', session.user.id)
+          .single();
+        if (profile) {
+          set({ user: profile, accessToken: session.access_token, isAuthenticated: true });
+        }
+      } else {
+        set({ user: null, accessToken: null, isAuthenticated: false });
+      }
+    });
+  },
+
+  logout: async () => {
+    await supabase.auth.signOut();
+    set({ user: null, accessToken: null, isAuthenticated: false });
+    window.location.href = '/';
+  },
+}));
