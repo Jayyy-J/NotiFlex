@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import Link from 'next/link';
 import { Bell, Map, DollarSign, Clock, Smartphone, Shield, Zap, BarChart3 } from 'lucide-react';
 
 const features = [
@@ -24,7 +25,6 @@ export function Features() {
             Powerful filtering tools designed specifically for Amazon Flex and DoorDash drivers.
           </p>
         </div>
-
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {features.map(({ icon: Icon, title, description }, i) => (
             <motion.div key={title}
@@ -71,9 +71,6 @@ export function HowItWorks() {
               transition={{ delay: i * 0.1 }}
               className="relative"
             >
-              {i < steps.length - 1 && (
-                <div className="hidden lg:block absolute top-6 left-full w-full h-px bg-gradient-to-r from-brand-200 to-transparent -translate-y-1/2 z-0" />
-              )}
               <div className="relative z-10">
                 <div className="text-4xl font-bold text-brand-200 dark:text-brand-800 mb-3">{step.n}</div>
                 <h3 className="font-semibold text-[rgb(var(--fg))] mb-2">{step.title}</h3>
